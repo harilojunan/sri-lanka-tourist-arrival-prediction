@@ -1,0 +1,4 @@
+SLTDA Dataset URL: https://www.sltda.gov.lk/en/monthly-tourist-arrivals-reports
+CBSL Dataset URL: https://www.cbsl.gov.lk/en/rates-and-indicators/exchange-rates/daily-indicative-usd-spot-exchange-rates
+Public GitHub repository URL: https://github.com/harilojunan/sri-lanka-tourist-arrival-prediction
+YouTube presentation/demo URL: 
