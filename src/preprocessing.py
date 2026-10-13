@@ -24,3 +24,9 @@ def _validate_arrival_values(data: pd.DataFrame) -> pd.DataFrame:
     if clean["Date"].duplicated().any():
         raise ValueError("Arrival data contains duplicate dates.")
     return clean
+
+def _validate_month_start_dates(data: pd.DataFrame) -> None:
+    """Reject dates that do not refer to the first day of a month."""
+    month_starts = data["Date"].dt.to_period("M").dt.to_timestamp()
+    if not data["Date"].eq(month_starts).all():
+        raise ValueError("Dates must be month-start dates.")
