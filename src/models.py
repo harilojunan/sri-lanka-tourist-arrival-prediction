@@ -3,6 +3,8 @@ import pandas as pd
 from sklearn.base import BaseEstimator
 from sklearn.impute import SimpleImputer 
 from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import Pipeline 
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
@@ -34,3 +36,17 @@ def make_pipeline(estimator: BaseEstimator) -> Pipeline:
             ("model", estimator),
         ]
     )
+    
+def make_baseline_models() -> dict[str, Pipeline]: 
+    return {
+        "Linear Regression": make_pipeline(LinearRegression()),
+        "Random Forest": make_pipeline(
+            RandomForestRegressor(
+                n_estimators=300,
+                max_depth=8,
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=1,
+            )
+        ),
+    }
