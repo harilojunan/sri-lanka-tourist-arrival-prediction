@@ -5,6 +5,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import GridSearchCV, TimeSeriesSplit
 from sklearn.pipeline import Pipeline 
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
@@ -57,3 +58,15 @@ def _random_forest_parameter_grid() -> dict[str, list[int]]:
         "model__max_depth": [8, 12],
         "model__min_samples_leaf": [1, 2],
     }
+
+def tune_random_forest(train: pd.DataFrame) -> GridSearchCV: 
+    search = GridSearchCV(
+        make_pipeline(RandomForestRegressor(random_state=42, n_jobs=1)),
+        _random_forest_parameter_grid(),
+        cv=TimeSeriesSplit(n_splits=5),
+        scoring="neg_mean_absolute_error",
+        n_jobs=1,
+        refit=True,
+    )
+    search.fit(train[FEATURE_COLUMNS], train["Target_Arrivals"])
+    return search
