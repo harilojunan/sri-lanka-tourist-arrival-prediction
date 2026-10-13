@@ -57,3 +57,12 @@ def validate_monthly_data(
     _validate_month_start_dates(clean)
     _validate_complete_coverage(clean, start, end)
     return clean
+
+def chronological_split(
+    data: pd.DataFrame, test_months: int = 18
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Hold out the latest target months without shuffling."""
+    if test_months <= 0 or test_months >= len(data):
+        raise ValueError("test_months must be positive and smaller than the data.")
+    ordered = data.sort_values("Target_Date").reset_index(drop=True)
+    return ordered.iloc[:-test_months].copy(), ordered.iloc[-test_months:].copy()
