@@ -1,5 +1,6 @@
 import pandas as pd
  
+from sklearn.base import BaseEstimator
 from sklearn.impute import SimpleImputer 
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline 
@@ -23,5 +24,13 @@ def _make_preprocessor() -> ColumnTransformer:
         [
             ("numeric", _make_numeric_preprocessor(), NUMERIC_FEATURES),
             ("month", OneHotEncoder(handle_unknown="ignore"), ["Month"]),
+        ]
+    )
+
+def make_pipeline(estimator: BaseEstimator) -> Pipeline: 
+    return Pipeline(
+        [
+            ("preprocess", _make_preprocessor()),
+            ("model", estimator),
         ]
     )
