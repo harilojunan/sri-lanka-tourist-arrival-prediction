@@ -30,3 +30,17 @@ def _validate_month_start_dates(data: pd.DataFrame) -> None:
     month_starts = data["Date"].dt.to_period("M").dt.to_timestamp()
     if not data["Date"].eq(month_starts).all():
         raise ValueError("Dates must be month-start dates.")
+    
+def _validate_complete_coverage(
+    data: pd.DataFrame, start: str, end: str | None
+) -> None:
+    """Require every month-start date in the requested period, exactly once."""
+    if end is None:
+        end = data["Date"].max().strftime("%Y-%m-%d")
+    expected = pd.date_range(start, end, freq="MS")
+    actual = pd.DatetimeIndex(data["Date"])
+    if not actual.equals(expected):
+        raise ValueError(
+            f"Expected exactly {len(expected)} consecutive month-start "
+            f"observations from {start} through {end}."
+        )
