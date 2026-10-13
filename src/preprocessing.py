@@ -44,3 +44,16 @@ def _validate_complete_coverage(
             f"Expected exactly {len(expected)} consecutive month-start "
             f"observations from {start} through {end}."
         )
+
+def validate_monthly_data(
+    data: pd.DataFrame,
+    start: str = "2015-01-01",
+    end: str | None = None,
+) -> pd.DataFrame:
+    """Validate a continuous monthly series without silently repairing it."""
+    _require_arrival_columns(data)
+    clean = _validate_arrival_values(data)
+    clean = clean.sort_values("Date").reset_index(drop=True)
+    _validate_month_start_dates(clean)
+    _validate_complete_coverage(clean, start, end)
+    return clean
