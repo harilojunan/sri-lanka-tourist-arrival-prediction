@@ -24,7 +24,31 @@ def regression_metrics(actual, predicted) -> dict[str, float]:
         "MAPE": mape,
     }
 
-# dev01 code
+def _evaluate_one_model(
+    name: str,
+    estimator: Pipeline,
+    train: pd.DataFrame,
+    test: pd.DataFrame,
+    *,
+    already_fitted: bool = False,
+) -> tuple[dict[str, float | str], pd.DataFrame]:
+    """Fit one estimator when needed and score it on the shared holdout."""
+    if not already_fitted:
+        estimator.fit(train[FEATURE_COLUMNS], train["Target_Arrivals"])
+
+    actual = test["Target_Arrivals"].to_numpy()
+    predicted = estimator.predict(test[FEATURE_COLUMNS])
+    metrics = {"Model": name, **regression_metrics(actual, predicted)}
+    predictions = pd.DataFrame(
+        {
+            "Target_Date": test["Target_Date"].values,
+            "Actual": actual,
+            "Predicted": predicted,
+            "Residual": actual - predicted,
+            "Model": name,
+        }
+    )
+    return metrics, predictions
 
 def evaluate_models(
         train: pd.DataFrame, test: pd.DataFrame
