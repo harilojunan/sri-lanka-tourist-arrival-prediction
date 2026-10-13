@@ -50,3 +50,10 @@ def make_baseline_models() -> dict[str, Pipeline]:
             )
         ),
     }
+
+def _random_forest_parameter_grid() -> dict[str, list[int]]: 
+    return {
+        "model__n_estimators": [200, 500],
+        "model__max_depth": [8, 12],
+        "model__min_samples_leaf": [1, 2],
+    }
