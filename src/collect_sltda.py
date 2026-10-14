@@ -2,6 +2,7 @@ import re
 import time
 from io import StringIO
 from pathlib import Path
+import warnings
 
 import pandas as pd
 import requests
@@ -70,3 +71,12 @@ def _find_monthly_table(page: str, year: int) -> pd.DataFrame:
     if table is None:
         raise RuntimeError(f"No January-December arrivals table found for {year}.")
     return table
+
+def _empty_year(year: int, reason: str, end_month: int = 12) -> pd.DataFrame:
+    warnings.warn(f"{year}: {reason} Assuming zero arrivals.", stacklevel=2)
+    return pd.DataFrame(
+        {
+            "Date": pd.date_range(f"{year}-01-01", periods=end_month, freq="MS"),
+            "Total_Arrivals": 0.0,
+        }
+    )
