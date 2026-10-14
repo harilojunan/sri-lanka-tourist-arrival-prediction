@@ -80,3 +80,23 @@ def _empty_year(year: int, reason: str, end_month: int = 12) -> pd.DataFrame:
             "Total_Arrivals": 0.0,
         }
     )
+
+def _find_month_and_value_columns(
+    table: pd.DataFrame, year: int
+) -> tuple[pd.DataFrame, str, str | None]:
+    table = table.copy()
+    table.columns = [str(column) for column in table.columns]
+    if not any("month" in column.lower() for column in table.columns):
+        first_row = table.iloc[0].astype(str).str.strip()
+        if first_row.str.lower().eq("month").any():
+            table.columns = first_row.tolist()
+            table.drop(index=table.index[0], inplace=True)
+
+    month_column = next(
+        (column for column in table.columns if "month" in column.lower()),
+        table.columns[0],
+    )
+    value_column = next(
+        (column for column in table.columns if str(year) in column), None
+    )
+    return table, month_column, value_column
