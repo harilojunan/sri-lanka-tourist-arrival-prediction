@@ -1,3 +1,4 @@
+import argparse
 import re
 import time
 from io import StringIO
@@ -190,3 +191,43 @@ def _validate_collected_period(
         raise RuntimeError("SLTDA monthly date-coverage check failed.")
     if (arrivals["Total_Arrivals"].dropna() < 0).any():
         raise RuntimeError("Negative SLTDA arrivals found.")
+
+def _resolve_output_path(output: Path) -> Path: 
+    return output if output.is_absolute() else PROJECT_ROOT / output
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--start-year", type=int, default=2015)
+    parser.add_argument("--end-year", type=int, default=2026)
+    parser.add_argument(
+        "--end-month",
+        type=int,
+        default=None,
+        help="Last month to include in the final year (1-12; required when collecting 2026).",
+    )
+    parser.add_argument("--output", type=Path, default=OUTPUT)
+    args = parser.parse_args()
+    if args.start_year > args.end_year:
+        parser.error("--start-year must not be after --end-year.")
+    if args.end_month is not None and not 1 <= args.end_month <= 12:
+        parser.error("--end-month must be between 1 and 12.")
+
+    if args.end_month is None and args.end_year == 2026:
+        parser.error(
+            "Pass --end-month with the latest month actually published by SLTDA."
+        )
+    end_month = args.end_month if args.end_month is not None else 12
+    result = _collect_year_range(args.start_year, args.end_year, end_month)
+    _validate_collected_period(
+        result, args.start_year, args.end_year, end_month
+    )
+
+    output = _resolve_output_path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    result.to_csv(output, index=False, na_rep="NA")
+    print(f"Saved {len(result)} rows to {output}")
+
+
+if __name__ == "__main__":
+    main()
