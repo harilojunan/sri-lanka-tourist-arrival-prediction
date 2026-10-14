@@ -178,3 +178,15 @@ def _collect_year_range(
     return pd.concat(yearly_frames, ignore_index=True).sort_values("Date").reset_index(
         drop=True
     )
+
+def _validate_collected_period(
+    arrivals: pd.DataFrame, start_year: int, end_year: int, end_month: int = 12
+) -> None: 
+    expected_dates = pd.date_range(
+        f"{start_year}-01-01", f"{end_year}-{end_month:02d}-01", freq="MS"
+    )
+    actual_dates = pd.DatetimeIndex(arrivals["Date"])
+    if not actual_dates.equals(expected_dates):
+        raise RuntimeError("SLTDA monthly date-coverage check failed.")
+    if (arrivals["Total_Arrivals"].dropna() < 0).any():
+        raise RuntimeError("Negative SLTDA arrivals found.")
