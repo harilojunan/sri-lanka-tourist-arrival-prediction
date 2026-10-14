@@ -138,3 +138,31 @@ def _extract_monthly_rows(
             stacklevel=2,
         )
     return result
+
+def collect_year(year: int, end_month: int = 12) -> pd.DataFrame: 
+    if year not in BASE_URLS:
+        raise ValueError(f"No configured SLTDA source URL for {year}.")
+    if not 1 <= end_month <= 12:
+        raise ValueError("end_month must be between 1 and 12.")
+    try:
+        page = _download_year_page(year)
+    except requests.HTTPError as error:
+        if error.response is not None and error.response.status_code == 404:
+            return _empty_year(
+                year, "the official report page returned HTTP 404.", end_month
+            )
+        raise
+    try:
+        table = _find_monthly_table(page, year)
+    except RuntimeError as error:
+        if str(error).startswith("No January-December arrivals table"):
+            return _empty_year(year, "no monthly arrivals table was found.", end_month)
+        raise
+    table, month_column, value_column = _find_month_and_value_columns(table, year)
+    if value_column is None:
+        return _empty_year(
+            year, f"no {year} arrival column was found in the report.", end_month
+        )
+    return _extract_monthly_rows(
+        table, year, month_column, value_column, end_month
+    )
