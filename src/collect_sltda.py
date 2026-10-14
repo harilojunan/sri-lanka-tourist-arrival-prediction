@@ -166,3 +166,15 @@ def collect_year(year: int, end_month: int = 12) -> pd.DataFrame:
     return _extract_monthly_rows(
         table, year, month_column, value_column, end_month
     )
+    
+def _collect_year_range(
+    start_year: int, end_year: int, end_month: int = 12
+) -> pd.DataFrame: 
+    yearly_frames = []
+    for year in range(start_year, end_year + 1):
+        print(f"Collecting SLTDA {year} ...")
+        year_end_month = end_month if year == end_year else 12
+        yearly_frames.append(collect_year(year, end_month=year_end_month))
+    return pd.concat(yearly_frames, ignore_index=True).sort_values("Date").reset_index(
+        drop=True
+    )
