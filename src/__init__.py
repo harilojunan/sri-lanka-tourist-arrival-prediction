@@ -1,0 +1,1 @@
+"""Reusable data and modelling components for the tourism forcating project."""
