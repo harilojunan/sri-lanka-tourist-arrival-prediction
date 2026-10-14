@@ -100,3 +100,41 @@ def _find_month_and_value_columns(
         (column for column in table.columns if str(year) in column), None
     )
     return table, month_column, value_column
+
+def _extract_monthly_rows(
+    table: pd.DataFrame,
+    year: int,
+    month_column: str,
+    value_column: str,
+    end_month: int = 12,
+) -> pd.DataFrame:
+    rows = []
+    for _, row in table.iterrows():
+        month = str(row[month_column]).strip().lower()
+        if month in MONTHS:
+            value = (
+                clean_number(row[value_column])
+                if value_column is not None
+                else float("nan")
+            )
+            rows.append(
+                (pd.Timestamp(year, MONTHS[month], 1), value)
+            )
+    expected_dates = pd.date_range(f"{year}-01-01", periods=end_month, freq="MS")
+    result = (
+        pd.DataFrame(rows, columns=["Date", "Total_Arrivals"])
+        .drop_duplicates(subset="Date", keep="last")
+        .set_index("Date")
+        .reindex(expected_dates)
+        .rename_axis("Date")
+        .reset_index()
+    )
+    missing_count = int(result["Total_Arrivals"].isna().sum())
+    if missing_count:
+        result["Total_Arrivals"] = result["Total_Arrivals"].fillna(0)
+        warnings.warn(
+            f"{year}: {missing_count} month(s) have blank, null, or unavailable "
+            "arrivals; assuming zero.",
+            stacklevel=2,
+        )
+    return result
