@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -23,3 +24,10 @@ MONTHS = {
         start=1,
     )
 }
+
+def clean_number(value) -> float:
+    text = str(value).replace(",", "").replace("\xa0", " ").strip()
+    if text in {"", "-", "---", "nan", "NaN"}:
+        return float("nan")
+    text = re.sub(r"[^0-9.-]", "", text)
+    return float(text) if text else float("nan")
