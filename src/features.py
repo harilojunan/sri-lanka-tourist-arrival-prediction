@@ -37,7 +37,7 @@ def build_supervised_features(monthly_data: pd.DataFrame) -> pd.DataFrame:
     frame["USD_LKR_Lag_1"] = economic["USD_LKR"].shift(1)
     frame["Inflation_Lag_1"] = economic["Inflation"].shift(1)
     event_flags = frame.index.to_series().map(event_features)
-    frame["Covid_Flag"] = event_flags.map(lambda flags: flags["COVID_Flag"])
+    frame["COVID_Flag"] = event_flags.map(lambda flags: flags["COVID_Flag"])
     frame["Economic_Crisis_Flag"] = event_flags.map(
         lambda flags: flags["Economic_Crisis_Flag"]
     )

@@ -6,7 +6,7 @@ import pandas as pd
 from src.preprocessing import validate_monthly_data
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-RAW_ECONOMIC_INDICATORS_PATH = (PROJECT_ROOT / "data" / "raw" / "cbsl_sources" / "cbsl_monthy.csv")
+RAW_ECONOMIC_INDICATORS_PATH = (PROJECT_ROOT / "data" / "raw" / "cbsl_sources" / "cbsl_monthly.csv")
 RAW_ARRIVALS = PROJECT_ROOT / "data/raw/sltlda_monthly_arrivals_2015_2026.csv"
 POST_PERIOD_SOURCE = PROJECT_ROOT / "data/raw/sltlda_monthly_arrivals_2015_2026.csv"
 PROCESSED_DATA = (PROJECT_ROOT / "data" / "processed" / "tourism_model_data.csv")
@@ -33,14 +33,14 @@ def validate_economic_indicators(data: pd.DataFrame) -> pd.DataFrame:
         clean[column] = pd.to_numeric(clean[column], errors="coerce")
     if clean.isna().any().any():
         raise ValueError(f"Economic indicator data contains missing or invalid values.")
-    if not np.infinite(clean[ECONOMIC_INDICATORS_COLUMNS].to_numpy(dtype=float)).all():
+    if not np.isfinite(clean[ECONOMIC_INDICATORS_COLUMNS].to_numpy(dtype=float)).all():
         raise ValueError("Economic indicator data contains infinite values.")
     if clean["Date"].duplicated().any():
         raise ValueError("Economic indicator data contains duplicate months.")
 
     clean = clean.sort_values("Date").reset_index(drop=True)
     month_starts = clean["Date"].dt.to_period("M").dt.to_timestamp()
-    if not clean["Date"].equals(month_starts).all():
+    if not clean["Date"].equals(month_starts):
         raise ValueError("Economic indicator data contains non-month-start dates.")
     return clean
 
@@ -89,6 +89,4 @@ def build_model_dataset() -> pd.DataFrame:
         f"from {data['Date'].min().strftime('%Y-%m')} to {data['Date'].max().strftime('%Y-%m')}.  "
     )
     return data
-
-
 
