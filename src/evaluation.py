@@ -12,6 +12,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 def regression_metrics(actual, predicted) -> dict[str, float]:
     actual = np.asarray(actual)
     predicted = np.asarray(predicted)
+    nonzero = actual != 0
     mape = (
         float(np.mean(np.abs((actual[nonzero] - predicted[nonzero]) / actual[nonzero])) * 100)
         if nonzero.any()
@@ -24,7 +25,30 @@ def regression_metrics(actual, predicted) -> dict[str, float]:
         "MAPE": mape,
     }
 
-# dev01 code
+def _evaluate_one_model(
+    name: str,
+    estimator: Pipeline,
+    train: pd.DataFrame,
+    test: pd.DataFrame,
+    *,
+    already_fitted: bool = False,
+) -> tuple[dict[str, float | str], pd.DataFrame]:
+    if not already_fitted:
+        estimator.fit(train[FEATURE_COLUMNS], train["Target_Arrivals"])
+
+    actual = test["Target_Arrivals"].to_numpy()
+    predicted = estimator.predict(test[FEATURE_COLUMNS])
+    metrics = {"Model": name, **regression_metrics(actual, predicted)}
+    predictions = pd.DataFrame(
+        {
+            "Target_Date": test["Target_Date"].values,
+            "Actual": actual,
+            "Predicted": predicted,
+            "Residual": actual - predicted,
+            "Model": name,
+        }
+    )
+    return metrics, predictions
 
 def evaluate_models(
         train: pd.DataFrame, test: pd.DataFrame
@@ -124,4 +148,3 @@ def save_results(
         best_model, best_predictions, figures / "actual_vs_predicted.png"
     )
     save_residual_plot(best_model, best_predictions, figures / "residuals.png")
-
