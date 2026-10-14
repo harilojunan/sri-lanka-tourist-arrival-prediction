@@ -273,18 +273,17 @@ def create_report(
     report_dir = project_root / "report"
     report_dir.mkdir(parents=True, exist_ok=True)
     markdown_path = report_dir / "final_report.md"
-    eda_summary = eda_summary(project_root)
+    summary = eda_summary(project_root)
     markdown = build_markdown(
         comparison,
         predictions,
         forecast_date,
         forecast,
         post_period_actual,
-        eda_summary,
+        summary,
     )
     markdown_path.write_text(markdown, encoding="utf-8")
     return markdown_path
-
 
 
 

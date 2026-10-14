@@ -48,9 +48,14 @@ def build_supervised_features(monthly_data: pd.DataFrame) -> pd.DataFrame:
 def make_next_month_features(
         monthly: pd.DataFrame, target_date: pd.Timestamp
 ) -> pd.DataFrame:
-    if target_date not in monthly["Date"].values:
-        raise ValueError(f"Target date {target_date} not found in monthly data.")
     target_date = pd.Timestamp(target_date).to_period("M").to_timestamp()
+    latest_month = pd.Timestamp(monthly["Date"].max()).to_period("M").to_timestamp()
+    expected_target_date = latest_month + pd.offsets.MonthBegin(1)
+    if target_date != expected_target_date:
+        raise ValueError(
+            "Target date must be the month immediately after the latest "
+            f"observation ({expected_target_date:%Y-%m-%d})."
+        )
     arrivals = monthly.set_index("Date")["Total_Arrivals"].sort_index()
     economic = monthly.set_index("Date")[["USD_LKR", "Inflation"]].sort_index()
     prior_months = get_required_history_dates(target_date)
