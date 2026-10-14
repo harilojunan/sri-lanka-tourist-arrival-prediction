@@ -1,7 +1,9 @@
 import re
 import time
+from io import StringIO
 from pathlib import Path
 
+import pandas as pd
 import requests
 
 
@@ -52,3 +54,19 @@ def _download_year_page(year: int) -> str:
                     "The existing local CSV is not changed when a download fails."
                 ) from error
             time.sleep(attempt)
+            
+def _find_monthly_table(page: str, year: int) -> pd.DataFrame:
+    tables = pd.read_html(StringIO(page))
+    table = next(
+        (
+            candidate
+            for candidate in tables
+            if {"January", "December"}.issubset(
+                set(candidate.astype(str).to_numpy().ravel())
+            )
+        ),
+        None,
+    )
+    if table is None:
+        raise RuntimeError(f"No January-December arrivals table found for {year}.")
+    return table
