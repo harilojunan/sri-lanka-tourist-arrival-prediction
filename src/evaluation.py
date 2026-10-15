@@ -96,7 +96,9 @@ def save_result_tables(
         tables_dir: Path,
         predictions_dir: Path
 ) -> None:
-    comparison.to_csv(tables_dir / "model_comparison.csv", index=False)
+    comparison.to_csv(
+        tables_dir / "model_comparison.csv", index=False, float_format="%.3f"
+    )
     predictions.to_csv(predictions_dir / "test_predictions.csv", index=False)
     errors  = (
         predictions.assign(Absolute_Error=lambda frame: frame["Residual"].abs())
