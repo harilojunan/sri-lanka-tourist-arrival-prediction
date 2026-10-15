@@ -9,6 +9,10 @@ import pandas as pd
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
+from src.features import FEATURE_COLUMNS
+from src.models import make_baseline_models, tune_random_forest
+
+
 def regression_metrics(actual, predicted) -> dict[str, float]:
     actual = np.asarray(actual)
     predicted = np.asarray(predicted)
@@ -25,7 +29,7 @@ def regression_metrics(actual, predicted) -> dict[str, float]:
         "MAPE": mape,
     }
 
-def _evaluate_one_model(
+def evaluate_one_model(
     name: str,
     estimator: Pipeline,
     train: pd.DataFrame,
@@ -95,7 +99,7 @@ def save_result_tables(
     comparison.to_csv(tables_dir / "model_comparison.csv", index=False)
     predictions.to_csv(predictions_dir / "test_predictions.csv", index=False)
     errors  = (
-        predictions.assign(Absolute_Error=lambda frame: frame["Residuals"].abs())
+        predictions.assign(Absolute_Error=lambda frame: frame["Residual"].abs())
         .sort_values(["Model", "Absolute_Error"], ascending=[True, False])
     )
     errors.to_csv(tables_dir / "error_analysis.csv", index=False)
@@ -138,7 +142,7 @@ def save_residual_plot(best_model: str, best: pd.DataFrame, path: Path) -> None:
     plt.close()
 
 def save_results(
-        comparison: pd,DataFrame, predictions: pd.dataFrame, output_dir: Path
+        comparison: pd.DataFrame, predictions: pd.DataFrame, output_dir: Path
 ) -> None:
     tables_dir, prediction_dir, figures = make_result_directories(output_dir)
     save_result_tables(comparison, predictions, tables_dir, prediction_dir)
