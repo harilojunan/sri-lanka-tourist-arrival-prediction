@@ -1,2 +1,0 @@
-Forecast_Date,Prediction,Actual_Observed,Absolute_Error,Note
-2026-10-01,179198.49232893772,,,Forecast only; the target-month actual is not in the supplied history.
