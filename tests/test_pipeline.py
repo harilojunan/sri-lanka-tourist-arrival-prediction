@@ -14,6 +14,7 @@ from src.preprocessing import chronological_split
 
 class PipelineTests(unittest.TestCase):
     def setUp(self) -> None:
+        # Create a deterministic monthly series shared by pipeline tests.
         dates = pd.date_range("2015-01-01", periods=108, freq="MS")
         self.monthly_data = pd.DataFrame(
             {
@@ -25,6 +26,7 @@ class PipelineTests(unittest.TestCase):
         )
 
     def test_build_supervised_features_uses_only_prior_months(self) -> None:
+        # Check lagged predictors are prior observations while target is current.
         features = build_supervised_features(self.monthly_data)
 
         first = features.iloc[0]
@@ -42,6 +44,7 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(first["USD_LKR_Lag_1"], self.monthly_data.loc[11, "USD_LKR"])
 
     def test_chronological_split_holds_out_latest_months(self) -> None:
+        # Verify the split keeps the final six target months for evaluation.
         data = pd.DataFrame(
             {
                 "Target_Date": pd.date_range("2020-01-01", periods=30, freq="MS"),
@@ -57,6 +60,7 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(test["Target_Arrivals"].tolist(), list(range(24, 30)))
 
     def test_make_next_month_features_rejects_nonconsecutive_target(self) -> None:
+        # Prevent forecasting a target beyond a gap after the observed series.
         with self.assertRaisesRegex(
             ValueError, "Target date must be the month immediately after"
         ):
@@ -65,6 +69,7 @@ class PipelineTests(unittest.TestCase):
             )
 
     def test_regression_metrics_excludes_zero_actuals_from_mape(self) -> None:
+        # Ensure zero actuals do not make percentage-error calculation invalid.
         metrics = regression_metrics(
             actual=np.array([10.0, 20.0, 0.0]),
             predicted=np.array([12.0, 18.0, 5.0]),
@@ -75,11 +80,13 @@ class PipelineTests(unittest.TestCase):
         self.assertAlmostEqual(metrics["MAPE"], 15.0)
 
     def test_forecast_next_month_uses_latest_history(self) -> None:
+        # Capture forecast inputs and verify their final lag comes from latest data.
         monthly_data = self.monthly_data
         seen_features: list[pd.DataFrame] = []
 
         class StubModel:
             def predict(self, features: pd.DataFrame) -> list[float]:
+                # Capture forecast inputs and return a deterministic test value.
                 seen_features.append(features.copy())
                 return [1234.5]
 
@@ -98,6 +105,7 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(seen_features[0].iloc[0]["Month"], 1)
 
     def test_save_post_period_check_writes_both_prediction_files(self) -> None:
+        # Check forecast and validation outputs are saved consistently.
         with tempfile.TemporaryDirectory() as directory:
             output_dir = Path(directory) / "results"
             run_pipeline.save_post_period_check(
@@ -118,6 +126,7 @@ class PipelineTests(unittest.TestCase):
             self.assertEqual(check.loc[0, "Absolute_Error"], 50.0)
 
     def test_run_wires_pipeline_outputs_to_report_and_summary(self) -> None:
+        # Verify the end-to-end runner passes computed outputs through each stage.
         monthly = pd.DataFrame({"Date": [pd.Timestamp("2023-12-01")]})
         supervised = pd.DataFrame({"Target_Date": [pd.Timestamp("2023-12-01")]})
         comparison = pd.DataFrame({"Model": ["Linear Regression"]})

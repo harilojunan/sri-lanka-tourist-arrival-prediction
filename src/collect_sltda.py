@@ -33,6 +33,7 @@ MONTHS = {
 }
 
 def clean_number(value) -> float:
+    # Parse a reported arrivals cell, treating unavailable markers as missing.
     text = str(value).replace(",", "").replace("\xa0", " ").strip()
     if text in {"", "-", "---", "nan", "NaN"}:
         return float("nan")
@@ -40,6 +41,7 @@ def clean_number(value) -> float:
     return float(text) if text else float("nan")
 
 def _download_year_page(year: int) -> str:
+    # Fetch one official annual report page, retrying transient connection errors.
     url = BASE_URLS[year]
     for attempt in range(1, MAX_DOWNLOAD_ATTEMPTS + 1):
         try:
@@ -58,6 +60,7 @@ def _download_year_page(year: int) -> str:
             time.sleep(attempt)
             
 def _find_monthly_table(page: str, year: int) -> pd.DataFrame:
+    # Locate the annual report table containing all twelve month names.
     tables = pd.read_html(StringIO(page))
     table = next(
         (
@@ -74,6 +77,7 @@ def _find_monthly_table(page: str, year: int) -> pd.DataFrame:
     return table
 
 def _empty_year(year: int, reason: str, end_month: int = 12) -> pd.DataFrame:
+    # Represent an unavailable report year as zeroes and warn about the assumption.
     warnings.warn(f"{year}: {reason} Assuming zero arrivals.", stacklevel=2)
     return pd.DataFrame(
         {
@@ -85,6 +89,7 @@ def _empty_year(year: int, reason: str, end_month: int = 12) -> pd.DataFrame:
 def _find_month_and_value_columns(
     table: pd.DataFrame, year: int
 ) -> tuple[pd.DataFrame, str, str | None]:
+    # Identify the month and requested-year columns, including header-row fallbacks.
     table = table.copy()
     table.columns = [str(column) for column in table.columns]
     if not any("month" in column.lower() for column in table.columns):
@@ -109,6 +114,7 @@ def _extract_monthly_rows(
     value_column: str,
     end_month: int = 12,
 ) -> pd.DataFrame:
+    # Map report cells onto a complete month index and flag assumed zeroes.
     rows = []
     for _, row in table.iterrows():
         month = str(row[month_column]).strip().lower()
@@ -121,6 +127,7 @@ def _extract_monthly_rows(
             rows.append(
                 (pd.Timestamp(year, MONTHS[month], 1), value)
             )
+    # Reindex to every expected month so omitted report rows are visible and warned on.
     expected_dates = pd.date_range(f"{year}-01-01", periods=end_month, freq="MS")
     result = (
         pd.DataFrame(rows, columns=["Date", "Total_Arrivals"])
@@ -141,6 +148,7 @@ def _extract_monthly_rows(
     return result
 
 def collect_year(year: int, end_month: int = 12) -> pd.DataFrame: 
+    # Collect and normalize one year's arrivals from its configured SLTDA page.
     if year not in BASE_URLS:
         raise ValueError(f"No configured SLTDA source URL for {year}.")
     if not 1 <= end_month <= 12:
@@ -171,6 +179,7 @@ def collect_year(year: int, end_month: int = 12) -> pd.DataFrame:
 def _collect_year_range(
     start_year: int, end_year: int, end_month: int = 12
 ) -> pd.DataFrame: 
+    # Collect each year in order, limiting only the final year to end_month.
     yearly_frames = []
     for year in range(start_year, end_year + 1):
         print(f"Collecting SLTDA {year} ...")
@@ -183,6 +192,7 @@ def _collect_year_range(
 def _validate_collected_period(
     arrivals: pd.DataFrame, start_year: int, end_year: int, end_month: int = 12
 ) -> None: 
+    # Ensure collection returned each expected month once and no negative values.
     expected_dates = pd.date_range(
         f"{start_year}-01-01", f"{end_year}-{end_month:02d}-01", freq="MS"
     )
@@ -193,10 +203,12 @@ def _validate_collected_period(
         raise RuntimeError("Negative SLTDA arrivals found.")
 
 def _resolve_output_path(output: Path) -> Path: 
+    # Resolve relative output paths against the repository root.
     return output if output.is_absolute() else PROJECT_ROOT / output
 
 
 def main() -> None:
+    # Parse collection options, validate the period, and write the resulting CSV.
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--start-year", type=int, default=2015)
     parser.add_argument("--end-year", type=int, default=2026)
@@ -218,6 +230,7 @@ def main() -> None:
             "Pass --end-month with the latest month actually published by SLTDA."
         )
     end_month = args.end_month if args.end_month is not None else 12
+    # Validate the full result before touching the destination CSV.
     result = _collect_year_range(args.start_year, args.end_year, end_month)
     _validate_collected_period(
         result, args.start_year, args.end_year, end_month
