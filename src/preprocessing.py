@@ -2,14 +2,14 @@ import pandas as pd
 
 
 def _require_arrival_columns(data: pd.DataFrame) -> None:
-    """Raise a clear error when the source is missing a required field."""
+    # Raise a clear error when the source is missing a required field.
     required = {"Date", "Total_Arrivals"}
     missing_columns = required.difference(data.columns)
     if missing_columns:
         raise ValueError(f"Missing required columns: {sorted(missing_columns)}")
 
 def _validate_arrival_values(data: pd.DataFrame) -> pd.DataFrame:
-    """Convert source values to expected types and validate each observation."""
+    # Convert source values to expected types and validate each observation.
     clean = data.copy()
     clean["Date"] = pd.to_datetime(clean["Date"], errors="coerce")
     clean["Total_Arrivals"] = pd.to_numeric(
@@ -26,7 +26,7 @@ def _validate_arrival_values(data: pd.DataFrame) -> pd.DataFrame:
     return clean
 
 def _validate_month_start_dates(data: pd.DataFrame) -> None:
-    """Reject dates that do not refer to the first day of a month."""
+    # Reject dates that do not refer to the first day of a month.
     month_starts = data["Date"].dt.to_period("M").dt.to_timestamp()
     if not data["Date"].eq(month_starts).all():
         raise ValueError("Dates must be month-start dates.")
@@ -34,9 +34,10 @@ def _validate_month_start_dates(data: pd.DataFrame) -> None:
 def _validate_complete_coverage(
     data: pd.DataFrame, start: str, end: str | None
 ) -> None:
-    """Require every month-start date in the requested period, exactly once."""
+    # Require every month-start date in the requested period, exactly once.
     if end is None:
         end = data["Date"].max().strftime("%Y-%m-%d")
+    # Compare the complete ordered index rather than silently filling missing months.
     expected = pd.date_range(start, end, freq="MS")
     actual = pd.DatetimeIndex(data["Date"])
     if not actual.equals(expected):
@@ -50,7 +51,7 @@ def validate_monthly_data(
     start: str = "2015-01-01",
     end: str | None = None,
 ) -> pd.DataFrame:
-    """Validate a continuous monthly series without silently repairing it."""
+    # Validate a continuous monthly series without silently repairing it.
     _require_arrival_columns(data)
     clean = _validate_arrival_values(data)
     clean = clean.sort_values("Date").reset_index(drop=True)
@@ -61,8 +62,9 @@ def validate_monthly_data(
 def chronological_split(
     data: pd.DataFrame, test_months: int = 18
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Hold out the latest target months without shuffling."""
+    # Hold out the latest target months without shuffling.
     if test_months <= 0 or test_months >= len(data):
         raise ValueError("test_months must be positive and smaller than the data.")
+    # The latest targets form the holdout so evaluation reflects future forecasting.
     ordered = data.sort_values("Target_Date").reset_index(drop=True)
     return ordered.iloc[:-test_months].copy(), ordered.iloc[-test_months:].copy()

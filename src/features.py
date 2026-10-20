@@ -14,6 +14,7 @@ FEATURE_COLUMNS = [
 ]
     
 def event_features(target_date: pd.Timestamp) -> dict[str, int]:
+    # Encode the configured COVID and economic-crisis target-month windows.
     covid_start = pd.Timestamp("2020-03-01")
     covid_end = pd.Timestamp("2021-12-01")
     crisis_start = pd.Timestamp("2022-01-01")
@@ -24,12 +25,14 @@ def event_features(target_date: pd.Timestamp) -> dict[str, int]:
     }
 
 def build_supervised_features(monthly_data: pd.DataFrame) -> pd.DataFrame:
+    # Create one leakage-safe feature row for each eligible target month.
     arrivals = monthly_data.set_index("Date")["Total_Arrivals"].sort_index()
     economic = monthly_data.set_index("Date")[["USD_LKR", "Inflation"]].sort_index()
     frame = pd.DataFrame(index=arrivals.index)
     frame.index.name = "Target_Date"
     frame["Year"] = frame.index.year
     frame["Month"] = frame.index.month
+    # Shifting before rolling keeps the target month's observed value out of its predictors.
     frame["Lag_1"] = arrivals.shift(1)
     frame["Lag_3"] = arrivals.shift(3)
     frame["Lag_12"] = arrivals.shift(12)
@@ -48,6 +51,7 @@ def build_supervised_features(monthly_data: pd.DataFrame) -> pd.DataFrame:
 def make_next_month_features(
         monthly: pd.DataFrame, target_date: pd.Timestamp
 ) -> pd.DataFrame:
+    # Build the feature row for the month immediately after available history.
     target_date = pd.Timestamp(target_date).to_period("M").to_timestamp()
     latest_month = pd.Timestamp(monthly["Date"].max()).to_period("M").to_timestamp()
     expected_target_date = latest_month + pd.offsets.MonthBegin(1)
@@ -58,6 +62,7 @@ def make_next_month_features(
         )
     arrivals = monthly.set_index("Date")["Total_Arrivals"].sort_index()
     economic = monthly.set_index("Date")[["USD_LKR", "Inflation"]].sort_index()
+    # Explicitly enumerate the preceding year so gaps cannot be hidden by positional lags.
     prior_months = get_required_history_dates(target_date)
     validate_forecast_history(arrivals.index, prior_months, target_date)
     validate_economic_history(economic.index, prior_months[-1])
@@ -76,6 +81,7 @@ def make_next_month_features(
     return pd.DataFrame([values], columns=FEATURE_COLUMNS)
 
 def get_required_history_dates(target_date: pd.Timestamp) -> pd.DatetimeIndex:
+    # Return the 12 month-start dates immediately preceding a forecast target.
     last_prior_month = target_date - pd.offsets.MonthBegin(1)
     return pd.date_range(
         end=last_prior_month, periods=12, freq="MS"
@@ -86,6 +92,7 @@ def validate_forecast_history(
         required_dates: pd.DatetimeIndex, 
         target_date: pd.Timestamp,
 ) -> None:
+    # Reject missing history and any observations at or beyond the forecast month.
     if not required_dates.isin(available_dates).all():
         raise ValueError(
             "Twelve consecutive historical months are required to forecast.")
@@ -98,6 +105,7 @@ def validate_economic_history(
         available_dates: pd.DatetimeIndex, 
         latest_required_month: pd.Timestamp
 ) -> None:
+    # Require the economic indicators needed for the one-month lag feature."""
     if latest_required_month not in available_dates:
         raise ValueError(
             "Economic indicator data must include the month immediately before the target month."

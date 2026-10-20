@@ -13,6 +13,7 @@ PROCESSED_DATA = (PROJECT_ROOT / "data" / "processed" / "tourism_model_data.csv"
 ECONOMIC_INDICATORS_COLUMNS = ["USD_LKR", "Inflation"]
 
 def load_arrivals(path: Path = RAW_ARRIVALS) -> pd.DataFrame: 
+    # Read the SLTDA CSV and validate its monthly arrival series.
     if not path.is_file():
         raise FileNotFoundError(
             f"SLTDA arrivals data not found: {path}. "
@@ -22,6 +23,7 @@ def load_arrivals(path: Path = RAW_ARRIVALS) -> pd.DataFrame:
     return validate_monthly_data(data)
 
 def validate_economic_indicators(data: pd.DataFrame) -> pd.DataFrame:
+    # Validate and normalize the monthly economic-indicator columns.
     required = {"Date", *ECONOMIC_INDICATORS_COLUMNS}
     missing_columns = required.difference(data.columns)
     if missing_columns:
@@ -46,6 +48,7 @@ def validate_economic_indicators(data: pd.DataFrame) -> pd.DataFrame:
 
 
 def load_model_dataset() -> pd.dataFrame:
+    # Join arrivals and economic indicators after requiring identical coverage.
     arrivals = load_arrivals()
     if not RAW_ECONOMIC_INDICATORS_PATH.exists():
         raise FileNotFoundError(f"Raw economic indicators file not found: {RAW_ECONOMIC_INDICATORS_PATH}")
@@ -53,6 +56,7 @@ def load_model_dataset() -> pd.dataFrame:
         pd.read_csv(RAW_ECONOMIC_INDICATORS_PATH, parse_dates=["Date"])
     )
 
+    # Exact index equality prevents a partial join from silently dropping months.
     expected_dates = pd.DatetimeIndex(arrivals["Date"])
     if not pd.DatetimeIndex(economic["Date"]).equals(expected_dates):
         raise ValueError(
@@ -68,6 +72,7 @@ def load_model_dataset() -> pd.dataFrame:
     )
 
 def load_post_period_arrivals() -> pd.DataFrame: 
+    # Return validated arrivals after the model's historical end date.
     if not POST_PERIOD_SOURCE.is_file():
         return pd.DataFrame(columns=["Date", "Total_Arrivals"])
     data = pd.read_csv(POST_PERIOD_SOURCE)
@@ -81,6 +86,7 @@ def load_post_period_arrivals() -> pd.DataFrame:
     return post_period.sort_values("Date").reset_index(drop=True)
 
 def build_model_dataset() -> pd.DataFrame:
+    # Persist the validated arrivals and indicator join for downstream steps.
     data = load_model_dataset()
     PROCESSED_DATA.parent.mkdir(parents=True, exist_ok=True)
     data.to_csv(PROCESSED_DATA, index=False)
@@ -89,4 +95,3 @@ def build_model_dataset() -> pd.DataFrame:
         f"from {data['Date'].min().strftime('%Y-%m')} to {data['Date'].max().strftime('%Y-%m')}.  "
     )
     return data
-

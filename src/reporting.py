@@ -2,6 +2,7 @@ from pathlib import Path
 import pandas as pd
 
 def metric_table(comparison: pd.DataFrame) -> list[list[str]]:
+    # Format model metrics as a header row followed by report-ready strings.
     header = ["Model", "MAE", "RMSE", "R2", "MAPE (%)"]
     rows = [
         [
@@ -17,6 +18,7 @@ def metric_table(comparison: pd.DataFrame) -> list[list[str]]:
 
 
 def eda_summary(project_root: Path) -> dict[str, int | float | str]:
+    # Summarize coverage, yearly totals, and average arrivals by calendar month.
     arrivals = pd.read_csv(
         project_root / "data/processed/tourism_model_data.csv",
         parse_dates=["Date"],
@@ -45,6 +47,7 @@ def eda_summary(project_root: Path) -> dict[str, int | float | str]:
 
 def holdout_error_rows(
     comparison: pd.DataFrame, predictions: pd.DataFrame) -> tuple[str, str, str, str]:
+    # Format the winning model's largest errors and all model metrics.
     winner_name = comparison.iloc[0]["Model"]
     winner_predictions = predictions.loc[
         predictions["Model"].eq(winner_name)].copy()
@@ -68,6 +71,7 @@ def holdout_error_rows(
 
 
 def random_forest_mae_improvement(comparison: pd.DataFrame) -> float:
+    # Return baseline Random Forest MAE minus tuned Random Forest MAE.
     model_scores = comparison.set_index("Model")
     return (
         model_scores.loc["Random Forest", "MAE"]
@@ -77,7 +81,7 @@ def random_forest_mae_improvement(comparison: pd.DataFrame) -> float:
 
 def post_period_markdown(
     forecast: float, actual: float | None) -> str:
-    
+    # Describe a post-period forecast and report error only when actual is known
     if actual is None:
         return (
             "No actual for this forecast month is present in the supplied "
@@ -92,6 +96,7 @@ def post_period_markdown(
 
 
 def markdown_intro_and_data(data_summary: dict[str, int | float | str],) -> str: 
+    # Build the report introduction and dataset/source description.
     return f"""# Monthly Tourist Arrival Forecasting in Sri Lanka
 
 **Assignment report draft - replace the clearly marked team/submission placeholders before submission.**
@@ -113,12 +118,14 @@ The economic file is supplied as a CBSL candidate and its month rows are joined 
 
 
 def markdown_eda_section(eda_summary: dict[str, int | float | str]) -> str:
+    # Build the report's EDA interpretation from computed summary values.
     return f"""## 3. Exploratory data analysis
 
 The validated series has a visible structural interruption and recovery around the COVID period, as well as differences in annual totals and seasonal month averages. Annual totals peak in {eda_summary["peak_year"]} ({eda_summary["peak_year_total"]:,.0f}) and are lowest in {eda_summary["low_year"]} ({eda_summary["low_year_total"]:,.0f}); the highest average month is {eda_summary["peak_month"]} and the lowest is {eda_summary["low_month"]}. The notebook produces the time-series, annual-total, and month-of-year plots so that these patterns can be checked visually. COVID-era observations are retained, not treated as erroneous outliers."""
 
 
 def markdown_features_section(data_summary: dict[str, int | float | str],) -> str:
+    # Explain validation, predictors, and the chronological holdout setup.
     return f"""## 4. Data preprocessing and feature engineering
 
 The pipeline requires one consecutive non-negative numeric arrival value for every month from {data_summary["start_month"]} through {data_summary["end_month"]}. It rejects invalid dates, duplicate months, missing/non-numeric arrivals, negative arrivals, non-month-start dates, and incomplete coverage. The collector replaces blank, unavailable, or omitted monthly values with assumed zeroes and emits a warning. The 2020 SLTDA report marks April-November as `---`, not numeric zeroes, so those replacements are assumptions and must be verified before interpreting model results. Economic rows must cover the same months, with valid numeric values and no duplicates.
@@ -141,6 +148,7 @@ The first 12 target rows lack a complete annual lag; the current validated super
 
 
 def markdown_model_sections() -> str:
+    # Describe the candidate algorithms, experimental design, and metrics.
     return """## 5. Algorithms and rationale
 
 **Linear Regression** is a transparent linear baseline. It estimates a weighted additive relationship between the engineered predictors and the next-month arrival count. Its simplicity makes it a useful reference, but it may underfit nonlinear patterns and interactions.
@@ -165,6 +173,7 @@ def markdown_results_section(
     metric_rows: str,
     holdout_start: str,
     holdout_end: str,) -> str:
+    # Render holdout metrics, the leading model, and largest absolute errors.
     improvement = random_forest_mae_improvement(comparison)
     return f"""## 7. Results
 
@@ -191,7 +200,7 @@ def markdown_post_period_section(
     forecast_date,
     forecast: float,
     post_period_actual: float | None,) -> str:
-    
+    # Explain the next-month forecast and distinguish it from holdout scoring.
     external_text = post_period_markdown(forecast, post_period_actual)
     return f"""## 8. Next-month forecast
 
@@ -199,6 +208,7 @@ The forecast for {forecast_date:%B %Y} is made using arrival and economic data a
 
 
 def markdown_limitations_and_conclusion() -> str:
+    # Return the report's critical discussion, limitations, and conclusion.
     return """## 9. Critical discussion, limitations, and future work
 
 The linear baseline provides an interpretable reference; the Random Forest can model nonlinear patterns. The table should be interpreted using all four metrics and the error plots, not a single score. Any large errors during COVID recovery or other structural changes should be discussed rather than removed as outliers. A short monthly series limits generalization and makes tuned forests vulnerable to overfitting.
@@ -220,6 +230,7 @@ This project establishes a reproducible, leakage-aware classical-ML model for ne
 
 
 def markdown_references() -> str:
+    # List source references and identify the supplied economic data caveat.
     return """## References
 
 1. Sri Lanka Tourism Development Authority, Monthly Tourist Arrivals Reports, https://www.sltda.gov.lk/en/monthly-tourist-arrivals-reports
@@ -238,6 +249,7 @@ def build_markdown(
     post_period_actual: float | None,
     eda_summary: dict[str, int | float | str],
 ) -> str:
+    # Assemble report sections in order and return a complete Markdown document.
     error_rows, metric_rows, holdout_start, holdout_end = holdout_error_rows(
         comparison, predictions
     )
@@ -270,6 +282,7 @@ def create_report(
     post_period_actual: float | None,
     project_root: Path,
 ) -> Path:
+    # Build the final Markdown report and save it under the project report folder.
     report_dir = project_root / "report"
     report_dir.mkdir(parents=True, exist_ok=True)
     markdown_path = report_dir / "final_report.md"
@@ -284,8 +297,6 @@ def create_report(
     )
     markdown_path.write_text(markdown, encoding="utf-8")
     return markdown_path
-
-
 
 
 

@@ -15,6 +15,7 @@ NUMERIC_FEATURES = [name for name in FEATURE_COLUMNS if name != "Month"]
 
 
 def _make_numeric_preprocessor() -> Pipeline: 
+    # Impute and scale numeric features within each model-fitting fold.
     return Pipeline(
         [
             ("imputer", SimpleImputer(strategy="median")),
@@ -23,6 +24,7 @@ def _make_numeric_preprocessor() -> Pipeline:
     )
 
 def _make_preprocessor() -> ColumnTransformer: 
+    # Scale numeric inputs and one-hot encode calendar month separately.
     return ColumnTransformer(
         [
             ("numeric", _make_numeric_preprocessor(), NUMERIC_FEATURES),
@@ -31,6 +33,7 @@ def _make_preprocessor() -> ColumnTransformer:
     )
 
 def make_pipeline(estimator: BaseEstimator) -> Pipeline: 
+    # Keep preprocessing and estimator fitting together to avoid leakage.
     return Pipeline(
         [
             ("preprocess", _make_preprocessor()),
@@ -39,6 +42,7 @@ def make_pipeline(estimator: BaseEstimator) -> Pipeline:
     )
     
 def make_baseline_models() -> dict[str, Pipeline]: 
+    # Return the fixed-parameter linear and random-forest comparisons.
     return {
         "Linear Regression": make_pipeline(LinearRegression()),
         "Random Forest": make_pipeline(
@@ -53,6 +57,7 @@ def make_baseline_models() -> dict[str, Pipeline]:
     }
 
 def _random_forest_parameter_grid() -> dict[str, list[int]]: 
+    # Define the forest hyperparameters evaluated by time-series CV.
     return {
         "model__n_estimators": [200, 500],
         "model__max_depth": [8, 12],
@@ -60,9 +65,11 @@ def _random_forest_parameter_grid() -> dict[str, list[int]]:
     }
 
 def tune_random_forest(train: pd.DataFrame) -> GridSearchCV: 
+    # Select a forest using forward-ordered folds from training data only.
     search = GridSearchCV(
         make_pipeline(RandomForestRegressor(random_state=42, n_jobs=1)),
         _random_forest_parameter_grid(),
+        # Each validation fold follows its training fold; random shuffling is avoided.
         cv=TimeSeriesSplit(n_splits=5),
         scoring="neg_mean_absolute_error",
         n_jobs=1,
